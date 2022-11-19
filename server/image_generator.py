@@ -13,9 +13,9 @@ class ImageGenerator():
             for x in range(240):
                 colour = image.getpixel((x, y))
                 print(colour)
-                r = int((colour[0] / 255) * 31) << 11
-                g = int((colour[1] / 255) * 63) << 5
-                b = int((colour[2] / 255) * 31)
+                r = ((colour[0] * 31) // 255) << 11
+                g = ((colour[1] * 63) // 255) << 5
+                b = ((colour[2] * 31) // 255)
                 data.append((r + g + b) >> 8)
                 data.append((r + g + b) & 0x00ff)
         return data
