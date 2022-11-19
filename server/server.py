@@ -1,4 +1,5 @@
 #import importlib
+from image_generator import ImageGenerator
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import os
 #import sys
@@ -18,7 +19,6 @@ SCRIPT_DIR = os.path.dirname(__file__)
 # visualisation = importlib.util.module_from_spec(spec)
 # loader.exec_module(visualisation)
 
-from image_generator import ImageGenerator
 
 HOST_NAME = "0.0.0.0"
 SERVER_PORT = 8080
@@ -38,17 +38,17 @@ class DurhackServer(BaseHTTPRequestHandler):
         path = path[1:]  # Remove leading /
         path = path[:-1] if path.endswith("/") else path  # Remove trailing / (if there is one)
         if path == "api/currencies/num":
-            self.good_response(str(len(binance_streamer.cached_stream_data)))
+            self.good_response_plain(str(len(binance_streamer.cached_stream_data)))
         elif path == "api/currencies/raw":
-            self.good_response(json.dumps(binance_streamer.cached_stream_data))
+            self.good_response_json(json.dumps(binance_streamer.cached_stream_data))
         elif path == "api/currencies/prediction":
-            self.good_response(json.dumps(self.new_prediction()))
+            self.good_response_json(json.dumps(self.new_prediction()))
         elif path == "api/currencies/prediction-string":
             prediction = self.new_prediction()
             if prediction == None:
-                self.good_response("The future remains uncertain.")
+                self.good_response_plain("The future remains uncertain.")
             else:
-                self.good_response(f"{prediction[0]}")
+                self.good_response_plain(f"{prediction[0]}")
         elif path == "api/image":
             # text = "const unsigned short bootlogo[32400] PROGMEM={"
             # byte_data = image_generator.generate_image()
@@ -73,7 +73,7 @@ class DurhackServer(BaseHTTPRequestHandler):
 
             if path in ALLOWED_PATHS:
                 with open(os.path.join(SCRIPT_DIR, "public", path), "r") as f:
-                    self.good_response(f.read())
+                    self.good_response_html(f.read())
             else:
                 self.send_response(404)
                 self.send_header("Content-type", "text/html")
@@ -94,14 +94,26 @@ class DurhackServer(BaseHTTPRequestHandler):
 
     @cache
     def get_symbol_info(self, symbol):
-        resp = requests.get("https://api.binance.com/api/v3/exchangeInfo", params={"symbol" : symbol})
+        resp = requests.get("https://api.binance.com/api/v3/exchangeInfo", params={"symbol": symbol})
         if resp and resp.json() and len(resp.json()) and "symbols" in resp.json() and len(resp.json()["symbols"]):
             return resp.json()["symbols"][0]
-        return {"baseAsset":"ETH", "quoteAsset":"BTC"}
+        return {"baseAsset": "ETH", "quoteAsset": "BTC"}
 
-    def good_response(self, text):
+    def good_response_plain(self, text):
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        self.wfile.write(bytes(str(text), "utf-8"))
+
+    def good_response_json(self, text):
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(bytes(str(text), "utf-8"))
+
+    def good_response_html(self, text):
+        self.send_response(200)
+        self.send_header("Content-type", "text/html")
         self.end_headers()
         self.wfile.write(bytes(str(text), "utf-8"))
 
