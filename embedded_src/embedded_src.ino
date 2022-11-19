@@ -12,9 +12,13 @@
 #include <Wire.h>
 #endif
 
+#define S_TO_MICROS 1000000
+#define TIMEOUT 30 * S_TO_MICROS
+
 U8G2_SSD1306_128X32_UNIVISION_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ 16, /* clock=*/ SCL, /* data=*/ SDA);   // pin remapping with ESP8266 HW I2C
 
 ScrollingText* scrollingLbl = nullptr;
+unsigned long lastInteraction = 0;
 
 void connectToWiFi(void) {
   if (WiFi.status() != WL_CONNECTED) {
@@ -73,6 +77,9 @@ void initScrollingText(void) {
   if (scrollingLbl)
     delete scrollingLbl;
   scrollingLbl = new ScrollingText(frame, txt);
+
+  if (micros() - lastInteraction >= TIMEOUT)
+    lastInteraction = micros();
 }
 
 void setup() {
@@ -100,7 +107,8 @@ void loop() {
     initScrollingText();
   }
   
-  scrollingLbl->loop();
+  if (micros() - lastInteraction < TIMEOUT)
+    scrollingLbl->loop();
 
   u8g2.sendBuffer();
   delay(7);
