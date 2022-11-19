@@ -33,9 +33,9 @@ class Visualisation():
                     f.write(json.dumps(data))
                 for coin in data:
                     if self.debug and coin['s'] not in self.currency:
-                        print(coin['s'], coin['h'])
+                        print(coin['s'], coin['P'])
 
-                    self.currency[coin['s']] = coin['h']
+                    self.currency[coin['s']] = coin['P']
 
                 if self.debug:
                     print(len(self.currency))

@@ -3,7 +3,9 @@ from http.server import BaseHTTPRequestHandler, HTTPServer
 import os
 import sys
 import json
-
+from collections import OrderedDict
+import random
+from decimal import *
 
 SCRIPT_DIR = os.path.dirname(__file__)
 visualisation_path = os.path.join(SCRIPT_DIR, "..", "visualisation", "visualisation.py")
@@ -31,6 +33,17 @@ class DurhackServer(BaseHTTPRequestHandler):
             self.good_response(str(len(vis.currency)))
         elif path == "api/currencies/raw":
             self.good_response(json.dumps(vis.currency))
+        elif path == "api/currencies/prediction":
+            sorted_percentages = OrderedDict(sorted(vis.currency.items(), key=lambda t: Decimal(t[1])))
+            # self.good_response(json.dumps(sorted_percentages))
+            prediction_index = len(sorted_percentages) - random.randrange(1, 6)
+            if prediction_index < 0:
+                prediction_index = 0
+            if len(sorted_percentages) == 0:
+                self.good_response("{\"UNCERTAIN\":\"0\"}")
+            else:
+                prediction_value = list(sorted_percentages.items())[prediction_index]
+                self.good_response(json.dumps(prediction_value))
         elif path == "":
             self.send_response(301)
             self.send_header("Location", "/dashboard")
@@ -45,7 +58,7 @@ class DurhackServer(BaseHTTPRequestHandler):
                 self.send_response(404)
                 self.send_header("Content-type", "text/html")
                 self.end_headers()
-                self.wfile.write(bytes(f"<h1>ERROR 404</h1>{path} not found.", "utf-8"))
+                self.wfile.write(bytes(f"<h1>ERROR 404</h1>{self.path} not found.", "utf-8"))
 
     def good_response(self, text):
         self.send_response(200)
