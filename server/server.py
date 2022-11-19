@@ -18,6 +18,7 @@ SCRIPT_DIR = os.path.dirname(__file__)
 # visualisation = importlib.util.module_from_spec(spec)
 # loader.exec_module(visualisation)
 
+from image_generator import ImageGenerator
 
 HOST_NAME = "0.0.0.0"
 SERVER_PORT = 8080
@@ -25,10 +26,14 @@ SERVER_PORT = 8080
 ALLOWED_PATHS = ["dashboard.html", "api.html"]
 
 binance_streamer = BinanceStreamer()
+image_generator = ImageGenerator()
 
 
 class DurhackServer(BaseHTTPRequestHandler):
+
     def do_GET(self):
+        SCRIPT_DIR = os.path.dirname(__file__)
+
         path = self.path
         path = path[1:]  # Remove leading /
         path = path[:-1] if path.endswith("/") else path  # Remove trailing / (if there is one)
@@ -44,6 +49,21 @@ class DurhackServer(BaseHTTPRequestHandler):
                 self.good_response("The future remains uncertain.")
             else:
                 self.good_response(f"{prediction[0]}")
+        elif path == "api/image":
+            # text = "const unsigned short bootlogo[32400] PROGMEM={"
+            # byte_data = image_generator.generate_image()
+            # for i in range(0, len(byte_data), 2):
+            #     text += "0x"
+            #     text += str(hex(byte_data[i]))[2:].zfill(2)
+            #     text += str(hex(byte_data[i+1]))[2:].zfill(2)
+            #     text += ","
+            # text = text[:-1]
+            # text += "};"
+
+            # with open("image_data.h", "w") as f:
+            #     f.write(text)
+
+            self.good_response_bytes(image_generator.generate_image())
         elif path == "":
             self.send_response(301)
             self.send_header("Location", "/dashboard")
@@ -81,9 +101,15 @@ class DurhackServer(BaseHTTPRequestHandler):
 
     def good_response(self, text):
         self.send_response(200)
-        self.send_header("Content-type", "text/html")
+        self.send_header("Content-type", "text/plain")
         self.end_headers()
         self.wfile.write(bytes(str(text), "utf-8"))
+
+    def good_response_bytes(self, bytes_content):
+        self.send_response(200)
+        self.send_header("Content-type", "application/octet-stream")
+        self.end_headers()
+        self.wfile.write(bytes_content)
 
 
 if __name__ == "__main__":
