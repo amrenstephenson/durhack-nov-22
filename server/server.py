@@ -1,19 +1,20 @@
-import importlib
+#import importlib
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import os
-import sys
+#import sys
 import json
 from collections import OrderedDict
 import random
 from decimal import *
+from binance_streamer import BinanceStreamer
 
 SCRIPT_DIR = os.path.dirname(__file__)
-visualisation_path = os.path.join(SCRIPT_DIR, "..", "visualisation", "visualisation.py")
+# visualisation_path = os.path.join(SCRIPT_DIR, "..", "visualisation", "visualisation.py")
 
-loader = importlib.machinery.SourceFileLoader("visualisation", visualisation_path)
-spec = importlib.util.spec_from_loader("visualisation", loader)
-visualisation = importlib.util.module_from_spec(spec)
-loader.exec_module(visualisation)
+# loader = importlib.machinery.SourceFileLoader("visualisation", visualisation_path)
+# spec = importlib.util.spec_from_loader("visualisation", loader)
+# visualisation = importlib.util.module_from_spec(spec)
+# loader.exec_module(visualisation)
 
 
 HOST_NAME = "0.0.0.0"
@@ -21,7 +22,7 @@ SERVER_PORT = 8080
 
 ALLOWED_PATHS = ["dashboard.html", "api.html"]
 
-vis = visualisation.Visualisation()
+binance_streamer = BinanceStreamer()
 
 
 class DurhackServer(BaseHTTPRequestHandler):
@@ -30,9 +31,9 @@ class DurhackServer(BaseHTTPRequestHandler):
         path = path[1:]  # Remove leading /
         path = path[:-1] if path.endswith("/") else path  # Remove trailing / (if there is one)
         if path == "api/currencies/num":
-            self.good_response(str(len(vis.currency)))
+            self.good_response(str(len(binance_streamer.cached_stream_data)))
         elif path == "api/currencies/raw":
-            self.good_response(json.dumps(vis.currency))
+            self.good_response(json.dumps(binance_streamer.cached_stream_data))
         elif path == "api/currencies/prediction":
             self.good_response(json.dumps(self.new_prediction()))
         elif path == "api/currencies/prediction-string":
@@ -58,8 +59,7 @@ class DurhackServer(BaseHTTPRequestHandler):
                 self.wfile.write(bytes(f"<h1>ERROR 404</h1>{self.path} not found.", "utf-8"))
 
     def new_prediction(self):
-        sorted_percentages = OrderedDict(sorted(vis.currency.items(), key=lambda t: Decimal(t[1])))
-        # self.good_response(json.dumps(sorted_percentages))
+        sorted_percentages = OrderedDict(sorted(binance_streamer.cached_stream_data.items(), key=lambda t: Decimal(t[1]["price_change_percent"])))
         prediction_index = len(sorted_percentages) - random.randrange(1, 6)
         if prediction_index < 0:
             prediction_index = 0
