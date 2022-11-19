@@ -8,7 +8,7 @@ import random
 from decimal import *
 from binance_streamer import BinanceStreamer
 import requests
-from functools import lru_cache
+from functools import cache
 
 SCRIPT_DIR = os.path.dirname(__file__)
 # visualisation_path = os.path.join(SCRIPT_DIR, "..", "visualisation", "visualisation.py")
@@ -92,7 +92,7 @@ class DurhackServer(BaseHTTPRequestHandler):
             symbol_info = self.get_symbol_info(prediction_symbol[0])
             return (f"{symbol_info['baseAsset']}/{symbol_info['quoteAsset']}", prediction_symbol[1])
 
-    @lru_cache(maxsize=None)
+    @cache
     def get_symbol_info(self, symbol):
         resp = requests.get("https://api.binance.com/api/v3/exchangeInfo", params={"symbol" : symbol})
         if resp and resp.json() and len(resp.json()) and "symbols" in resp.json() and len(resp.json()["symbols"]):
