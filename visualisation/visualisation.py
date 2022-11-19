@@ -7,12 +7,14 @@ import threading
 
 STREAM_SYBMOL = "btcusdt"
 STREAM_TYPE = "aggTrade"
-STREAM_NAME = STREAM_SYBMOL + "@" + STREAM_TYPE
+#STREAM_NAME = STREAM_SYBMOL + "@" + STREAM_TYPE
+STREAM_NAME = "!ticker_1d@arr"
 
 ENDPOINT = f"wss://stream.binance.com:9443/ws/{STREAM_NAME}"
 
 running = True
 
+currency = {}
 
 def main():
     threading.Thread(target=wait_for_input_then_stop).start()
@@ -30,9 +32,17 @@ async def stream():
     global running
     async with connect(ENDPOINT) as websocket:
         while running:
-            result = "REC:", await websocket.recv()
+            result = await websocket.recv()
             if running:
-                print(result)
+                data = json.loads(result)
+                for coin in data:
+                  if coin['s'] not in currency:
+                    print(coin['s'], coin['h'])
+                  
+                  currency[coin['s']] = coin['h']
+
+                print(len(currency))
+
 
 if __name__ == "__main__":
     main()
