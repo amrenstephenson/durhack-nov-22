@@ -8,11 +8,12 @@ void ScrollingText::loop() {
   u8g2.setClipWindow(_f.x0, _f.y0, _f.x1, _f.y1);
 
   const char* txt = _s.c_str();
+  constexpr long GAP = 20;
 
   long windowW = _f.x1 - _f.x0;
   long textW = u8g2.getStrWidth(txt);
   long textH = u8g2.getAscent();
-  long scrollPageW = max(textW + 10, windowW + 1);
+  long scrollPageW = max(textW + GAP, windowW + 1);
 
   long offset1 = _offset;
   long offset2 = _offset + scrollPageW;

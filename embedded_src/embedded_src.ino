@@ -14,7 +14,7 @@
 
 U8G2_SSD1306_128X32_UNIVISION_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ 16, /* clock=*/ SCL, /* data=*/ SDA);   // pin remapping with ESP8266 HW I2C
 
-ScrollingText* helloWorld;
+ScrollingText* scrollingLbl = nullptr;
 
 void connectToWiFi(void) {
   if (WiFi.status() != WL_CONNECTED) {
@@ -65,34 +65,43 @@ void resetTerminal(void) {
   Serial.println();
 }
 
+void initScrollingText(void) {
+  connectToWiFi();
+  String prediction = GET("http://10.249.11.28:8080/api/currencies/prediction-string");
+  String txt = "The future of " + prediction + " looks bright.";
+  TextFrame frame = {0, (u8g2.getDisplayHeight() - u8g2.getAscent()) / 2, u8g2.getDisplayWidth(), u8g2.getDisplayHeight()};
+  if (scrollingLbl)
+    delete scrollingLbl;
+  scrollingLbl = new ScrollingText(frame, txt);
+}
+
 void setup() {
   // put your setup code here, to run once:
   resetTerminal();
 
   Serial.println("MAC Address: " + WiFi.macAddress());
-  connectToWiFi();
-  String prediction = GET("http://10.249.11.28:8080/api/currencies/prediction-string");
 
   pinMode(9, OUTPUT);
   digitalWrite(9, 0);	// default output in I2C mode for the SSD1306 test shield: set the i2c adr to 0
 
-  String txt = "The future of " + prediction + " looks bright.";
-  helloWorld = new ScrollingText({0, 0, u8g2.getDisplayWidth(), u8g2.getDisplayHeight()}, txt);
-
-  Serial.println("Beginning display");
-
   u8g2.begin();
+  u8g2.setFontMode(1);
+  u8g2.setFontDirection(0);
+  u8g2.setFont(u8g2_font_ncenB14_tr);
+
+  initScrollingText();
 }
 
 void loop() {
   // put your main code here, to run repeatedly:
   u8g2.clearBuffer();
-  u8g2.setFontMode(1);
-  u8g2.setFontDirection(0);
-  u8g2.setFont(u8g2_font_ncenB14_tr);
+
+  if (!digitalRead(0)) {
+    initScrollingText();
+  }
   
-  helloWorld->loop();
+  scrollingLbl->loop();
 
   u8g2.sendBuffer();
-  delay(10);
+  delay(7);
 }
