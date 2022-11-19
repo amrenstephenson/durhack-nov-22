@@ -29,6 +29,8 @@ class Visualisation():
             while True:
                 result = await websocket.recv()
                 data = json.loads(result)
+                with open("temp.json", "w") as f:
+                    f.write(json.dumps(data))
                 for coin in data:
                     if self.debug and coin['s'] not in self.currency:
                         print(coin['s'], coin['h'])
