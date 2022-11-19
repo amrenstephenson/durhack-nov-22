@@ -1,7 +1,7 @@
 # Python 3 server example
 from http.server import BaseHTTPRequestHandler, HTTPServer
 
-HOST_NAME = "localhost"
+HOST_NAME = "0.0.0.0"
 SERVER_PORT = 8080
 
 
