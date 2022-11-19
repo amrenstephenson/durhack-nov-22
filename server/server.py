@@ -34,16 +34,13 @@ class DurhackServer(BaseHTTPRequestHandler):
         elif path == "api/currencies/raw":
             self.good_response(json.dumps(vis.currency))
         elif path == "api/currencies/prediction":
-            sorted_percentages = OrderedDict(sorted(vis.currency.items(), key=lambda t: Decimal(t[1])))
-            # self.good_response(json.dumps(sorted_percentages))
-            prediction_index = len(sorted_percentages) - random.randrange(1, 6)
-            if prediction_index < 0:
-                prediction_index = 0
-            if len(sorted_percentages) == 0:
-                self.good_response("{\"UNCERTAIN\":\"0\"}")
+            self.good_response(json.dumps(self.new_prediction()))
+        elif path == "api/currencies/prediction-string":
+            prediction = self.new_prediction()
+            if prediction == None:
+                self.good_response("The future remains uncertain.")
             else:
-                prediction_value = list(sorted_percentages.items())[prediction_index]
-                self.good_response(json.dumps(prediction_value))
+                self.good_response(f"{prediction[0]}")
         elif path == "":
             self.send_response(301)
             self.send_header("Location", "/dashboard")
@@ -59,6 +56,17 @@ class DurhackServer(BaseHTTPRequestHandler):
                 self.send_header("Content-type", "text/html")
                 self.end_headers()
                 self.wfile.write(bytes(f"<h1>ERROR 404</h1>{self.path} not found.", "utf-8"))
+
+    def new_prediction(self):
+        sorted_percentages = OrderedDict(sorted(vis.currency.items(), key=lambda t: Decimal(t[1])))
+        # self.good_response(json.dumps(sorted_percentages))
+        prediction_index = len(sorted_percentages) - random.randrange(1, 6)
+        if prediction_index < 0:
+            prediction_index = 0
+        if len(sorted_percentages) == 0:
+            return None
+        else:
+            return list(sorted_percentages.items())[prediction_index]
 
     def good_response(self, text):
         self.send_response(200)
