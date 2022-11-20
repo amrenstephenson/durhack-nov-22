@@ -14,7 +14,7 @@
 // Timeouts
 #define S_TO_MICROS 1000000
 #define TIMEOUT 30 * S_TO_MICROS
-#define THROW_MIN_DELAY 0.5 * S_TO_MICROS
+#define THROW_MIN_DELAY 0.1 * S_TO_MICROS
 
 typedef enum {
   BALL,
@@ -47,7 +47,7 @@ void orangeTouched(){
 void connectToWiFi(void) {
   if (WiFi.status() != WL_CONNECTED) {
     const char* ssid = "LinkIT";
-    const char* password = "7WngW5dE";
+    const char* password = "DXQjTwNw";
     WiFi.begin(ssid, password);
     Serial.println("Connecting");
     while(WiFi.status() != WL_CONNECTED) { 
