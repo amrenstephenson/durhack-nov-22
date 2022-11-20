@@ -11,17 +11,34 @@
 #endif
 
 #define S_TO_MICROS 1000000
-#define TIMEOUT 30 * S_TO_MICROS
+#define NEW_CRYPTO 30 * S_TO_MICROS
+
+enum TradeRanking {
+  GOOD,
+  MEH,
+  BAD,
+  N_RANKINGS
+};
+
+struct TradeDetails {
+  String symbol = "";
+  String from = "";
+  String to = "";
+  enum TradeRanking ranking = GOOD;
+  float price = 0.0;
+  float percentIncrease = 0.0;
+};
 
 U8G2_SSD1306_128X32_UNIVISION_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ 16, /* clock=*/ SCL, /* data=*/ SDA);   // pin remapping with ESP8266 HW I2C
 
+TradeDetails currentTrade;
 ScrollingText* scrollingLbl = nullptr;
 unsigned long lastInteraction = 0;
 
 void connectToWiFi(void) {
   if (WiFi.status() != WL_CONNECTED) {
     const char* ssid = "LinkIT";
-    const char* password = "GLapCAkH";
+    const char* password = "KPdP4TrK";
     WiFi.begin(ssid, password);
 
     Serial.print("Connecting.");
@@ -72,7 +89,16 @@ void initScrollingText(void) {
   
   String toCurrency = "";
   String fromCurrency = "";
-  String tradeCSV = GET("http://10.249.11.28:8080/api/prediction/good");
+
+  enum TradeRanking tradeRanking = (enum TradeRanking)random(GOOD, N_RANKINGS);
+  static const String endpoints[N_RANKINGS] = {
+    [GOOD] = "http://10.249.11.28:8080/api/prediction/good",
+    [MEH] = "http://10.249.11.28:8080/api/prediction/meh",
+    [BAD] = "http://10.249.11.28:8080/api/prediction/bad"
+  };
+
+  // Get CSV and split into components
+  String tradeCSV = GET(endpoints[tradeRanking]);
   const char* delims = ",";
   char* s = strdup(tradeCSV.c_str());
   const char* part = strtok(s, delims);
@@ -80,10 +106,16 @@ void initScrollingText(void) {
   while (part) {
     switch (i++) {
       case 0:
-        fromCurrency = part;
+        currentTrade.from = part;
         break;
       case 1:
-        toCurrency = part;
+        currentTrade.to = part;
+        break;
+      case 2:
+        currentTrade.price = atof(part);
+        break;
+      case 3:
+        currentTrade.percentIncrease = atof(part);
         break;
       default:
         break;
@@ -91,15 +123,35 @@ void initScrollingText(void) {
     part = strtok(NULL, delims);
   }
   free(s);
+  currentTrade.ranking = tradeRanking;
+  currentTrade.symbol = currentTrade.to + "/" + currentTrade.from;
 
-  String txt = "The future of " + fromCurrency + "/" + toCurrency + " looks bright.";
+  int randomPhrase = random(0, 2);
+  String txt;
+  switch (tradeRanking) {
+    case GOOD:
+      if (randomPhrase == 0)
+        txt = "Sell your " + currentTrade.from + " for " + currentTrade.to + "! It's increased by " + currentTrade.percentIncrease + "%";
+      else
+        txt = currentTrade.to + " to the moon!!!!";
+      break;
+    case MEH:
+      if (randomPhrase == 0)
+        txt = "I don't know anything about " + currentTrade.to + ":/ The great oracle has let me down";
+      else
+        txt = "Buying " + currentTrade.to + " is a risk... It hasn't moved all day!";
+      break;
+    default: // BAD
+      if (randomPhrase == 0)
+        txt = "Only a fool would trade " + currentTrade.from + " for " + currentTrade.to + " :o ";
+      else
+        txt = "Silly, why would you be buying " + currentTrade.to + "? It's only worth " + currentTrade.price;
+      break;
+  }
   TextFrame frame = {0, (u8g2.getDisplayHeight() - u8g2.getAscent()) / 2, u8g2.getDisplayWidth(), u8g2.getDisplayHeight()};
   if (scrollingLbl)
     delete scrollingLbl;
   scrollingLbl = new ScrollingText(frame, txt);
-
-  if (micros() - lastInteraction >= TIMEOUT)
-    lastInteraction = micros();
 }
 
 void setup() {
@@ -123,12 +175,12 @@ void loop() {
   // put your main code here, to run repeatedly:
   u8g2.clearBuffer();
 
-  if (!digitalRead(0)) {
+  if (micros() - lastInteraction > NEW_CRYPTO) {
     initScrollingText();
+    lastInteraction = micros();
   }
   
-  if (micros() - lastInteraction < TIMEOUT)
-    scrollingLbl->loop();
+  scrollingLbl->loop();
 
   u8g2.sendBuffer();
   delay(7);
