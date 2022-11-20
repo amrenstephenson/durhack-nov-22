@@ -6,13 +6,9 @@ from functools import lru_cache
 import requests
 import os
 from PIL import Image, ImageEnhance
-import pandas as pd
-import plotly.graph_objects as go
-import plotly.io as pio
 import socket
 from image_processor import ImageProcessorPIL as ImageProcessor
-
-from image_to_rgb565 import ImageToRGB565Converter
+from graph_generator import GraphGeneratorPlotly as GraphGenerator
 
 app = Flask(__name__)
 binance_streamer = BinanceStreamer()
@@ -89,28 +85,16 @@ def get_sorted_data_for_quality(quality):
 
 def generate_graph(crypto_symbol):
     SCRIPT_DIR = os.path.dirname(__file__)
-
-    pio.templates.default = "plotly_dark"
-
-    response = requests.get(f"https://www.binance.com/api/v3/klines?symbol={crypto_symbol}&interval=1h&limit=24")
-
-    df = pd.DataFrame(response.json())
-    df[0] /= 1000
-    df[0] = pd.to_datetime(df[0], unit='s')
-    fig = go.Figure(
-        data=[go.Candlestick(x=df[0], open=df[1], high=df[2], low=df[3], close=df[4])],
-        layout={
-            'xaxis': {'title': 'x-label', 'visible': True, 'showticklabels': True},
-            'yaxis': {'title': 'y-label', 'visible': False, 'showticklabels': True}
-        }
-    )
-
     filepath = os.path.join(SCRIPT_DIR, "candlestick.png")
 
-    fig.write_image(filepath, width=700, height=640)
+    response = requests.get(f"https://www.binance.com/api/v3/klines?symbol={crypto_symbol}&interval=1h&limit=24")
+    candlestick_data = response.json()
+
+    graph_g = GraphGenerator(candlestick_data)
+    graph_g.generate_candlestick_graph()
+    graph_g.save_graph(filepath, width=700, height=640)
 
     image_p = ImageProcessor(filepath)
-
     image_p.crop(50, 105, 653, 443)
     image_p.resize_down(240, 135)
     image_p.set_black_point(40)
