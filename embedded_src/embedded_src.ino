@@ -69,8 +69,30 @@ void resetTerminal(void) {
 
 void initScrollingText(void) {
   connectToWiFi();
-  String prediction = GET("http://10.249.11.28:8080/api/currencies/prediction-string");
-  String txt = "The future of " + prediction + " looks bright.";
+  
+  String toCurrency = "";
+  String fromCurrency = "";
+  String tradeCSV = GET("http://10.249.11.28:8080/api/prediction/good");
+  const char* delims = ",";
+  char* s = strdup(tradeCSV.c_str());
+  const char* part = strtok(s, delims);
+  unsigned int i = 0;
+  while (part) {
+    switch (i++) {
+      case 0:
+        fromCurrency = part;
+        break;
+      case 1:
+        toCurrency = part;
+        break;
+      default:
+        break;
+    }
+    part = strtok(NULL, delims);
+  }
+  free(s);
+
+  String txt = "The future of " + fromCurrency + "/" + toCurrency + " looks bright.";
   TextFrame frame = {0, (u8g2.getDisplayHeight() - u8g2.getAscent()) / 2, u8g2.getDisplayWidth(), u8g2.getDisplayHeight()};
   if (scrollingLbl)
     delete scrollingLbl;

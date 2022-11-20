@@ -132,7 +132,7 @@ void initBallView(void) {
 
   //parse CSV:
   String tradeCSV = GET(endpoints[tradeRanking]);
-  const char* delims = ",/"; //TODO: / is not needed once we have v2 API
+  const char* delims = ",";
   char* s = strdup(tradeCSV.c_str());
   const char* part = strtok(s, delims);
   unsigned int i = 0;
@@ -149,6 +149,8 @@ void initBallView(void) {
         break;
       case 3:
         currentTrade.percentIncrease = atof(part);
+        break;
+      default:
         break;
     }
     part = strtok(NULL, delims);
