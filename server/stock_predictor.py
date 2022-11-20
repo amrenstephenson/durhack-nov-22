@@ -25,7 +25,8 @@ class StockPredictor():
 
         prediction_symbol_pair = prediction[0]
         prediction_data = prediction[1]
-        return ",".join([*self.finance_collector.split_symbol_pair(prediction_symbol_pair), prediction_data["last_price"], prediction_data["price_change_percent"]])
+        split_symbols = self.finance_collector.split_symbol_pair(prediction_symbol_pair)
+        return ",".join([*split_symbols, prediction_data["last_price"], prediction_data["price_change_percent"]])
 
     def get_sorted_data_for_quality(self, quality: str):
         if quality == QUALITY_GOOD:
