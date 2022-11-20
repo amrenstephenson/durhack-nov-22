@@ -16,10 +16,18 @@ enum TradeRanking {
   N_RANKINGS
 };
 
+struct TradeDetails {
+  String symbol = "";
+  String from = "";
+  String to = "";
+  enum TradeRanking ranking = GOOD;
+  float price = 0.0;
+  float percentIncrease = 0.0;
+};
+
 TFT_eSPI tft = TFT_eSPI();
 
-String tradeStr = "";
-enum TradeRanking tradeRanking = GOOD;
+TradeDetails currentTrade;
 unsigned long lastInteraction = 0;
 unsigned long curPage = 0;
 
@@ -62,7 +70,7 @@ String GET(String url) {
     
     Serial.println("[HTTPS] Unable to connect");
     tft.fillScreen(TFT_BLACK);
-    tft.setCursor(10, 10, 2);
+    tft.setCursor(0, 10, 2);
     tft.setTextColor(TFT_WHITE, TFT_RED);
     tft.println("Amren's crappy server is down");
     delay(1000);
@@ -96,13 +104,39 @@ void printCentered(String str) {
 void initBallView(void) {
   connectToWiFi();
 
-  tradeRanking = (enum TradeRanking)random(GOOD, N_RANKINGS);
+  enum TradeRanking tradeRanking = (enum TradeRanking)random(GOOD, N_RANKINGS);
   static const String endpoints[N_RANKINGS] = {
-    [GOOD] = "http://10.249.11.28:8080/api/currencies/prediction-string/good",
-    [MEH] = "http://10.249.11.28:8080/api/currencies/prediction-string/meh",
-    [BAD] = "http://10.249.11.28:8080/api/currencies/prediction-string/bad"
+    [GOOD] = "http://10.249.11.28:8080/api/prediction/good",
+    [MEH] = "http://10.249.11.28:8080/api/prediction/meh",
+    [BAD] = "http://10.249.11.28:8080/api/prediction/bad"
   };
-  tradeStr = GET(endpoints[tradeRanking]);
+
+  //parse CSV:
+  String tradeCSV = GET(endpoints[tradeRanking]);
+  const char* delims = ",/"; //TODO: / is not needed once we have v2 API
+  char* s = strdup(tradeCSV.c_str());
+  const char* part = strtok(s, delims);
+  unsigned int i = 0;
+  while (part) {
+    switch (i++) {
+      case 0:
+        currentTrade.from = part;
+        break;
+      case 1:
+        currentTrade.to = part;
+        break;
+      case 2:
+        currentTrade.price = atof(part);
+        break;
+      case 3:
+        currentTrade.percentIncrease = atof(part);
+        break;
+    }
+    part = strtok(NULL, delims);
+  }
+  free(s);
+  currentTrade.ranking = tradeRanking;
+  currentTrade.symbol = currentTrade.to + "/" + currentTrade.from;
 
   tft.fillScreen(TFT_BLACK);
   tft.setRotation(0);
@@ -123,9 +157,9 @@ void initBallView(void) {
   //draw trade name:
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
   tft.setTextSize(1);
-  unsigned long txtW = tft.textWidth(tradeStr);
+  unsigned long txtW = tft.textWidth(currentTrade.symbol);
   tft.setCursor((width - txtW) / 2, 45, 2);
-  tft.println(tradeStr);
+  tft.println(currentTrade.symbol);
 
   //draw prediction:
   static const String predictions[N_RANKINGS] = {
@@ -148,12 +182,25 @@ void initGraphView(void) {
   tft.fillScreen(TFT_BLACK);
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
   tft.println("Loading graph...");
-  String dataStr = GET("http://10.249.11.28:8080/api/image/" + tradeStr);
+  String dataStr = GET("http://10.249.11.28:8080/api/image/" + currentTrade.from + currentTrade.to);
   tft.fillScreen(TFT_BLACK);
 
   const unsigned short* dataBytes = (const unsigned short*)dataStr.c_str();
   tft.setSwapBytes(true);
   tft.pushImage(0, 0, 240, 135, dataBytes);
+  
+  //draw label:
+  unsigned long yLblOff;
+  if (currentTrade.ranking == GOOD || currentTrade.ranking == MEH) {
+    yLblOff = 5;
+  } else {
+    yLblOff = 98;
+  }
+  tft.setTextColor(TFT_WHITE, TFT_BLACK);
+  tft.setCursor(5, yLblOff);
+  tft.println(currentTrade.symbol);
+  tft.setCursor(5, yLblOff+tft.fontHeight());
+  tft.printf("1%s = %.3f%s", currentTrade.from.c_str(), currentTrade.price, currentTrade.to.c_str());
 }
 
 int needsRefresh = 0;
