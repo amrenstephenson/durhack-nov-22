@@ -117,15 +117,6 @@ def generate_graph(crypto_symbol):
     image_p.increase_contrast(2)
     image_p.save_to_file(filepath)
 
-    # image = Image.open(filepath)
-    # image = image.crop((70-20, 90+15, 630+43-20, 30 + 338+50+10+15))
-    # image.thumbnail((240, 135), Image.Resampling.LANCZOS)
-
-    # image_filter = ImageEnhance.Contrast(image)
-    # image = image_filter.enhance(2)
-
-    # image.save(filepath, quality=100, optimize=True)
-
     return filepath
 
 
