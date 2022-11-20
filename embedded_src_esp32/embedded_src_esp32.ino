@@ -66,9 +66,11 @@ void connectToWiFi(void) {
     const char* password = "DXQjTwNw";
     WiFi.begin(ssid, password);
     Serial.println("Connecting");
-    while(WiFi.status() != WL_CONNECTED) { 
+    for (unsigned int i = 0; WiFi.status() != WL_CONNECTED; i++) { 
       delay(500);
       Serial.print(".");
+      if (i > 15)
+        return;
     }
 
     Serial.println("");
@@ -81,6 +83,7 @@ String GET(String url) {
   String resp;
 
   for (;;) {
+    String errMsg = "";
     if (WiFi.status() == WL_CONNECTED) {
       WiFiClient client;
       HTTPClient http;
@@ -95,13 +98,16 @@ String GET(String url) {
         }
         http.end();
       }
+      errMsg = "Amren's crappy server is down";
+    } else {
+      errMsg = "Not connected to LinkIT";
     }
     
-    Serial.println("[HTTPS] Unable to connect");
+    Serial.println("GET failed.");
     tft.fillScreen(TFT_BLACK);
     tft.setCursor(0, 10, 2);
     tft.setTextColor(TFT_WHITE, TFT_RED);
-    tft.println("Amren's crappy server is down");
+    tft.println(errMsg);
     delay(1000);
   }
 
@@ -253,6 +259,8 @@ void setup() {
 
   tft.begin();
   tft.setCursor(0, 0, 2);
+
+  connectToWiFi();
   showSplashScreen();
 }
 
