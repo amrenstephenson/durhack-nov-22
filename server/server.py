@@ -42,11 +42,19 @@ class DurhackServer(BaseHTTPRequestHandler):
             self.good_response_plain(str(len(binance_streamer.cached_stream_data)))
         elif path == "api/currencies/raw":
             self.good_response_json(json.dumps(binance_streamer.cached_stream_data))
-        elif path == "api/currencies/prediction":
-            prediction = self.new_prediction()
+        elif path.startswith("api/currencies/prediction/"):
+            prediction_quality = self.remove_prefix(path, "api/currencies/prediction/")
+            if prediction_quality not in ["bad", "meh", "good"]:
+                self.send_response(400)
+                return
+            prediction = self.new_prediction(prediction_quality)
             self.good_response_plain(f"{prediction[0]},{prediction[1]['last_price']},{prediction[1]['price_change_percent']}")
-        elif path == "api/currencies/prediction-string":
-            prediction = self.new_prediction()
+        elif path.startswith("api/currencies/prediction-string/"):
+            prediction_quality = self.remove_prefix(path, "api/currencies/prediction-string/")
+            if prediction_quality not in ["bad", "meh", "good"]:
+                self.send_response(400)
+                return
+            prediction = self.new_prediction(prediction_quality)
             if prediction == None:
                 self.send_response(204)
                 self.send_header("Location", "/dashboard")
@@ -59,7 +67,7 @@ class DurhackServer(BaseHTTPRequestHandler):
 
             self.good_response_bytes(image_bytes)
         elif path.startswith("api/image/"):
-            image_path = graph_generator.generate_graph(path[10:].replace("/", ""))
+            image_path = graph_generator.generate_graph(self.remove_prefix(path, "api/image/").replace("/", ""))
             image_bytes = image_converter.to_bytes(image_path)
 
             self.good_response_bytes(image_bytes)
@@ -79,9 +87,25 @@ class DurhackServer(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(bytes(f"<h1>ERROR 404</h1>{self.path} not found.", "utf-8"))
 
-    def new_prediction(self):
-        sorted_percentages = OrderedDict(sorted(binance_streamer.cached_stream_data.items(), key=lambda t: Decimal(t[1]["price_change_percent"])))
-        prediction_index = len(sorted_percentages) - random.randrange(1, 6)
+    def remove_prefix(self, text, prefix):
+        if text.startswith(prefix):
+            return text[len(prefix):]
+        return text
+
+    def new_prediction(self, quality):
+        sorted_percentages = None
+        if quality == "good" or quality == "bad":
+            sorted_percentages = OrderedDict(sorted(binance_streamer.cached_stream_data.items(), key=lambda t: Decimal(t[1]["price_change_percent"])))
+
+        else:
+            sorted_percentages = OrderedDict(sorted(binance_streamer.cached_stream_data.items(), key=lambda t: abs(Decimal(t[1]["price_change_percent"]))))
+
+        prediction_index = None
+        if quality == "good":
+            prediction_index = len(sorted_percentages) - random.randrange(1, 6)
+        else:
+            prediction_index = random.randrange(0, 5)
+
         if prediction_index < 0:
             prediction_index = 0
         if len(sorted_percentages) == 0:
