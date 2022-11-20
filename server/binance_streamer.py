@@ -46,4 +46,4 @@ class BinanceStreamer():
 
 
 if __name__ == "__main__":
-    Visualisation(debug=True)
+    BinanceStreamer(debug=True)
