@@ -5,7 +5,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>API Endpoint</title>
+    <title>API Reference</title>
     <style>
         body {
             font-family: monospace;
@@ -28,7 +28,7 @@
 </head>
 
 <body>
-    <h1>API Endpoint</h1>
+    <h1>API Reference</h1>
     <table>
         <tr>
             <th>API Path</th>
@@ -47,8 +47,9 @@
         </tr>
         <tr>
             <td><a href="/api/currencies/prediction">/api/currencies/prediction</a></td>
-            <td>JSON</td>
-            <td>A JSON object with a magical stock prediction.</td>
+            <td>CSV</td>
+            <td>A CSV with a magical stock prediction, its price, and its percentage increase over the last 24 hours.
+            </td>
         </tr>
         <tr>
             <td><a href="/api/currencies/prediction-string">/api/currencies/prediction-string</a></td>
@@ -56,9 +57,9 @@
             <td>A string with a magical stock prediction.</td>
         </tr>
         <tr>
-            <td><a href="/api/image">/api/image</a></td>
+            <td><a href="/api/image/SNM/BUSD">/api/image/&lt;stock-symbol&gt;</a></td>
             <td>RGB565 data</td>
-            <td>An image.</td>
+            <td>An image that shows the graph of a given stock symbol.</td>
         </tr>
 
     </table>

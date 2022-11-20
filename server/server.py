@@ -9,7 +9,8 @@ import random
 from decimal import *
 from binance_streamer import BinanceStreamer
 import requests
-from functools import cache
+from functools import lru_cache
+import graph_generator
 
 SCRIPT_DIR = os.path.dirname(__file__)
 # visualisation_path = os.path.join(SCRIPT_DIR, "..", "visualisation", "visualisation.py")
@@ -26,7 +27,7 @@ SERVER_PORT = 8080
 ALLOWED_PATHS = ["dashboard.html", "api.html"]
 
 binance_streamer = BinanceStreamer()
-image_generator = ImageGenerator()
+image_converter = ImageGenerator()
 
 
 class DurhackServer(BaseHTTPRequestHandler):
@@ -42,28 +43,26 @@ class DurhackServer(BaseHTTPRequestHandler):
         elif path == "api/currencies/raw":
             self.good_response_json(json.dumps(binance_streamer.cached_stream_data))
         elif path == "api/currencies/prediction":
-            self.good_response_json(json.dumps(self.new_prediction()))
+            prediction = self.new_prediction()
+            self.good_response_plain(f"{prediction[0]},{prediction[1]['last_price']},{prediction[1]['price_change_percent']}")
         elif path == "api/currencies/prediction-string":
             prediction = self.new_prediction()
             if prediction == None:
-                self.good_response_plain("The future remains uncertain.")
+                self.send_response(204)
+                self.send_header("Location", "/dashboard")
+                self.end_headers()
             else:
                 self.good_response_plain(f"{prediction[0]}")
-        elif path == "api/image":
-            # text = "const unsigned short bootlogo[32400] PROGMEM={"
-            # byte_data = image_generator.generate_image()
-            # for i in range(0, len(byte_data), 2):
-            #     text += "0x"
-            #     text += str(hex(byte_data[i]))[2:].zfill(2)
-            #     text += str(hex(byte_data[i+1]))[2:].zfill(2)
-            #     text += ","
-            # text = text[:-1]
-            # text += "};"
+        elif path == "api/image":  # Easter egg image.
+            orange_path = os.path.join(SCRIPT_DIR, "orange.jpg")
+            image_bytes = image_converter.to_bytes(orange_path)
 
-            # with open("image_data.h", "w") as f:
-            #     f.write(text)
+            self.good_response_bytes(image_bytes)
+        elif path.startswith("api/image/"):
+            image_path = graph_generator.generate_graph(path[10:].replace("/", ""))
+            image_bytes = image_converter.to_bytes(image_path)
 
-            self.good_response_bytes(image_generator.generate_image())
+            self.good_response_bytes(image_bytes)
         elif path == "":
             self.send_response(301)
             self.send_header("Location", "/dashboard")
@@ -92,7 +91,7 @@ class DurhackServer(BaseHTTPRequestHandler):
             symbol_info = self.get_symbol_info(prediction_symbol[0])
             return (f"{symbol_info['baseAsset']}/{symbol_info['quoteAsset']}", prediction_symbol[1])
 
-    @cache
+    @lru_cache(maxsize=None)
     def get_symbol_info(self, symbol):
         resp = requests.get("https://api.binance.com/api/v3/exchangeInfo", params={"symbol": symbol})
         if resp and resp.json() and len(resp.json()) and "symbols" in resp.json() and len(resp.json()["symbols"]):
