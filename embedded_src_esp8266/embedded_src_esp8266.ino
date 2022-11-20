@@ -145,7 +145,7 @@ void initScrollingText(void) {
       if (randomPhrase == 0)
         txt = "Only a fool would trade " + currentTrade.from + " for " + currentTrade.to + " :o ";
       else
-        txt = "Silly, why would you be buying " + currentTrade.to + "? It's only worth " + currentTrade.price;
+        txt = "Silly, why would you be buying " + currentTrade.to + "? It's only worth " + currentTrade.price + currentTrade.from;
       break;
   }
   TextFrame frame = {0, (u8g2.getDisplayHeight() - u8g2.getAscent()) / 2, u8g2.getDisplayWidth(), u8g2.getDisplayHeight()};
