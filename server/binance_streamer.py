@@ -3,7 +3,6 @@ from websockets import connect
 import json
 import threading
 from decimal import *
-from collections import OrderedDict
 
 
 class BinanceStreamer():
