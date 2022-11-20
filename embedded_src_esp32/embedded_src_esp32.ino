@@ -9,9 +9,17 @@
 #define S_TO_MICROS 1000000
 #define TIMEOUT 30 * S_TO_MICROS
 
+enum TradeRanking {
+  GOOD,
+  MEH,
+  BAD,
+  N_RANKINGS
+};
+
 TFT_eSPI tft = TFT_eSPI();
 
 String tradeStr = "";
+enum TradeRanking tradeRanking = GOOD;
 unsigned long lastInteraction = 0;
 unsigned long curPage = 0;
 
@@ -54,7 +62,7 @@ String GET(String url) {
     
     Serial.println("[HTTPS] Unable to connect");
     tft.fillScreen(TFT_BLACK);
-    tft.setCursor(0, 0, 2);
+    tft.setCursor(10, 10, 2);
     tft.setTextColor(TFT_WHITE, TFT_RED);
     tft.println("Amren's crappy server is down");
     delay(1000);
@@ -87,7 +95,14 @@ void printCentered(String str) {
 
 void initBallView(void) {
   connectToWiFi();
-  tradeStr = GET("http://10.249.11.28:8080/api/currencies/prediction-string");
+
+  tradeRanking = (enum TradeRanking)random(GOOD, N_RANKINGS);
+  static const String endpoints[N_RANKINGS] = {
+    [GOOD] = "http://10.249.11.28:8080/api/currencies/prediction-string/good",
+    [MEH] = "http://10.249.11.28:8080/api/currencies/prediction-string/meh",
+    [BAD] = "http://10.249.11.28:8080/api/currencies/prediction-string/bad"
+  };
+  tradeStr = GET(endpoints[tradeRanking]);
 
   tft.fillScreen(TFT_BLACK);
   tft.setRotation(0);
@@ -109,14 +124,19 @@ void initBallView(void) {
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
   tft.setTextSize(1);
   unsigned long txtW = tft.textWidth(tradeStr);
-  tft.setCursor((width - txtW) / 2, 20, 2);
+  tft.setCursor((width - txtW) / 2, 45, 2);
   tft.println(tradeStr);
 
   //draw prediction:
+  static const String predictions[N_RANKINGS] = {
+    [GOOD] = "Outlook\ngood.",
+    [MEH] = "Future\nuncertain.",
+    [BAD] = "Very\ndoubtful."
+  };
   tft.setTextColor(TFT_WHITE, TFT_BLUE);
   tft.setTextSize(1);
   tft.setCursor(0, top_offset + 20, 2);
-  printCentered("Outlook\ngood.");
+  printCentered(predictions[tradeRanking]);
 }
 
 void initGraphView(void) {
@@ -162,6 +182,7 @@ void changePage(void) {
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
+  randomSeed(analogRead(A0));
   Serial.println();
   pinMode(35, INPUT);
   pinMode(0, INPUT);
