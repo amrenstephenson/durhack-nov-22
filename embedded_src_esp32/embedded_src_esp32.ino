@@ -3,6 +3,8 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
 
+#include "banana.h"
+
 // Display libraries
 #include <SPI.h>
 #include <TFT_eSPI.h>
@@ -14,7 +16,7 @@
 // Timeouts
 #define S_TO_MICROS 1000000
 #define TIMEOUT 30 * S_TO_MICROS
-unsigned long THROW_MIN_DELAY = 0.2 * S_TO_MICROS;
+unsigned long THROW_MIN_DELAY = 0.1 * S_TO_MICROS;
 
 typedef enum {
   BALL,
@@ -224,6 +226,20 @@ void initGraphView(void) {
   tft.printf("1%s = %.3f%s", currentTrade.from.c_str(), currentTrade.price, currentTrade.to.c_str());
 }
 
+void showSplashScreen() {
+  tft.setTextSize(2);
+  tft.fillScreen(TFT_BLACK);
+  tft.setTextColor(TFT_WHITE, TFT_BLACK);
+  tft.setRotation(0);
+  String msg = "Pick me up";
+  tft.setCursor((tft.width() - tft.textWidth(msg)) / 2, 45, 2);
+  tft.println(msg);
+
+  tft.setSwapBytes(true);
+  tft.pushImage((135 - 75) / 2, 90, 75, 100, banana_img);
+  tft.setTextSize(1);
+}
+
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
@@ -236,7 +252,8 @@ void setup() {
   Serial.println("MAC Address: " + WiFi.macAddress());
 
   tft.begin();
-  tft.fillScreen(TFT_BLACK);
+  tft.setCursor(0, 0, 2);
+  showSplashScreen();
 }
 
 void loop() {
@@ -248,7 +265,7 @@ void loop() {
   // If active and not touched in TIMEOUT millis then reset state and turn off screen
   if (!touched && active && currentTime - lastTouched > TIMEOUT) {
     active = false;
-    tft.fillScreen(TFT_BLACK);
+    showSplashScreen();
   }
 
   // If touched since last loop
