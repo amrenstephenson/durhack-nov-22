@@ -46,7 +46,7 @@ def easter_egg():
 
 @app.route("/api/image/<symbol>")
 def image(symbol):
-    image_path = generate_graph(symbol)
+    image_path = generate_graph_for_symbol(symbol)
     return ImageProcessor(image_path).to_rgb565()
 
 
@@ -83,7 +83,7 @@ def get_sorted_data_for_quality(quality):
         return binance_streamer.get_sorted_data(reverse=True)
 
 
-def generate_graph(crypto_symbol):
+def generate_graph_for_symbol(crypto_symbol):
     SCRIPT_DIR = os.path.dirname(__file__)
     filepath = os.path.join(SCRIPT_DIR, "candlestick.png")
 
