@@ -1,4 +1,5 @@
 #import importlib
+from image_generator import ImageGenerator
 from http.server import BaseHTTPRequestHandler, HTTPServer
 import os
 #import sys
@@ -8,7 +9,8 @@ import random
 from decimal import *
 from binance_streamer import BinanceStreamer
 import requests
-from functools import cache
+from functools import lru_cache
+import graph_generator
 
 SCRIPT_DIR = os.path.dirname(__file__)
 # visualisation_path = os.path.join(SCRIPT_DIR, "..", "visualisation", "visualisation.py")
@@ -18,7 +20,6 @@ SCRIPT_DIR = os.path.dirname(__file__)
 # visualisation = importlib.util.module_from_spec(spec)
 # loader.exec_module(visualisation)
 
-from image_generator import ImageGenerator
 
 HOST_NAME = "0.0.0.0"
 SERVER_PORT = 8080
@@ -26,7 +27,7 @@ SERVER_PORT = 8080
 ALLOWED_PATHS = ["dashboard.html", "api.html"]
 
 binance_streamer = BinanceStreamer()
-image_generator = ImageGenerator()
+image_converter = ImageGenerator()
 
 
 class DurhackServer(BaseHTTPRequestHandler):
@@ -38,32 +39,30 @@ class DurhackServer(BaseHTTPRequestHandler):
         path = path[1:]  # Remove leading /
         path = path[:-1] if path.endswith("/") else path  # Remove trailing / (if there is one)
         if path == "api/currencies/num":
-            self.good_response(str(len(binance_streamer.cached_stream_data)))
+            self.good_response_plain(str(len(binance_streamer.cached_stream_data)))
         elif path == "api/currencies/raw":
-            self.good_response(json.dumps(binance_streamer.cached_stream_data))
+            self.good_response_json(json.dumps(binance_streamer.cached_stream_data))
         elif path == "api/currencies/prediction":
-            self.good_response(json.dumps(self.new_prediction()))
+            prediction = self.new_prediction()
+            self.good_response_plain(f"{prediction[0]},{prediction[1]['last_price']},{prediction[1]['price_change_percent']}")
         elif path == "api/currencies/prediction-string":
             prediction = self.new_prediction()
             if prediction == None:
-                self.good_response("The future remains uncertain.")
+                self.send_response(204)
+                self.send_header("Location", "/dashboard")
+                self.end_headers()
             else:
-                self.good_response(f"{prediction[0]}")
-        elif path == "api/image":
-            # text = "const unsigned short bootlogo[32400] PROGMEM={"
-            # byte_data = image_generator.generate_image()
-            # for i in range(0, len(byte_data), 2):
-            #     text += "0x"
-            #     text += str(hex(byte_data[i]))[2:].zfill(2)
-            #     text += str(hex(byte_data[i+1]))[2:].zfill(2)
-            #     text += ","
-            # text = text[:-1]
-            # text += "};"
+                self.good_response_plain(f"{prediction[0]}")
+        elif path == "api/image":  # Easter egg image.
+            orange_path = os.path.join(SCRIPT_DIR, "orange.jpg")
+            image_bytes = image_converter.to_bytes(orange_path)
 
-            # with open("image_data.h", "w") as f:
-            #     f.write(text)
+            self.good_response_bytes(image_bytes)
+        elif path.startswith("api/image/"):
+            image_path = graph_generator.generate_graph(path[10:].replace("/", ""))
+            image_bytes = image_converter.to_bytes(image_path)
 
-            self.good_response_bytes(image_generator.generate_image())
+            self.good_response_bytes(image_bytes)
         elif path == "":
             self.send_response(301)
             self.send_header("Location", "/dashboard")
@@ -73,7 +72,7 @@ class DurhackServer(BaseHTTPRequestHandler):
 
             if path in ALLOWED_PATHS:
                 with open(os.path.join(SCRIPT_DIR, "public", path), "r") as f:
-                    self.good_response(f.read())
+                    self.good_response_html(f.read())
             else:
                 self.send_response(404)
                 self.send_header("Content-type", "text/html")
@@ -92,16 +91,28 @@ class DurhackServer(BaseHTTPRequestHandler):
             symbol_info = self.get_symbol_info(prediction_symbol[0])
             return (f"{symbol_info['baseAsset']}/{symbol_info['quoteAsset']}", prediction_symbol[1])
 
-    @cache
+    @lru_cache(maxsize=None)
     def get_symbol_info(self, symbol):
-        resp = requests.get("https://api.binance.com/api/v3/exchangeInfo", params={"symbol" : symbol})
+        resp = requests.get("https://api.binance.com/api/v3/exchangeInfo", params={"symbol": symbol})
         if resp and resp.json() and len(resp.json()) and "symbols" in resp.json() and len(resp.json()["symbols"]):
             return resp.json()["symbols"][0]
-        return {"baseAsset":"ETH", "quoteAsset":"BTC"}
+        return {"baseAsset": "ETH", "quoteAsset": "BTC"}
 
-    def good_response(self, text):
+    def good_response_plain(self, text):
         self.send_response(200)
         self.send_header("Content-type", "text/plain")
+        self.end_headers()
+        self.wfile.write(bytes(str(text), "utf-8"))
+
+    def good_response_json(self, text):
+        self.send_response(200)
+        self.send_header("Content-type", "application/json")
+        self.end_headers()
+        self.wfile.write(bytes(str(text), "utf-8"))
+
+    def good_response_html(self, text):
+        self.send_response(200)
+        self.send_header("Content-type", "text/html")
         self.end_headers()
         self.wfile.write(bytes(str(text), "utf-8"))
 
