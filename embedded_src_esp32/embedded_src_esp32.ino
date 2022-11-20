@@ -14,7 +14,7 @@
 // Timeouts
 #define S_TO_MICROS 1000000
 #define TIMEOUT 30 * S_TO_MICROS
-#define THROW_MIN_DELAY 0.2 * S_TO_MICROS
+unsigned long THROW_MIN_DELAY = 0.2 * S_TO_MICROS;
 
 typedef enum {
   BALL,
@@ -50,6 +50,12 @@ unsigned long curPage = 0;
 
 void orangeTouched(){
   touched = true;
+  THROW_MIN_DELAY = 0.2 * S_TO_MICROS;
+}
+
+void refreshBtnDown() {
+  touched = true;
+  THROW_MIN_DELAY = 0.5 * S_TO_MICROS;
 }
 
 void connectToWiFi(void) {
@@ -224,7 +230,8 @@ void setup() {
   randomSeed(analogRead(A0));
   Serial.println();
   touchAttachInterrupt(ORANGE_PIN, orangeTouched, ORANGE_THRESHOLD);
-  attachInterrupt(35, orangeTouched, FALLING);
+  attachInterrupt(35, refreshBtnDown, FALLING);
+  attachInterrupt(0, refreshBtnDown, FALLING);
 
   Serial.println("MAC Address: " + WiFi.macAddress());
 
@@ -237,6 +244,12 @@ void loop() {
   connectToWiFi();
 
   unsigned long currentTime = micros();
+
+  // If active and not touched in TIMEOUT millis then reset state and turn off screen
+  if (!touched && active && currentTime - lastTouched > TIMEOUT) {
+    active = false;
+    tft.fillScreen(TFT_BLACK);
+  }
 
   // If touched since last loop
   if (touched) {
@@ -259,12 +272,6 @@ void loop() {
     }
 
     touched = false;
-    lastTouched = currentTime;
-  }
-
-  // If active and not touched in TIMEOUT millis then reset state and turn off screen
-  if (active && currentTime - lastTouched > TIMEOUT) {
-    active = false;
-    tft.fillScreen(TFT_BLACK);
+    lastTouched = micros();
   }
 }
