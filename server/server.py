@@ -10,6 +10,9 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.io as pio
 import socket
+from image_processor import ImageProcessorPIL as ImageProcessor
+
+from image_to_rgb565 import ImageToRGB565Converter
 
 app = Flask(__name__)
 binance_streamer = BinanceStreamer()
@@ -42,13 +45,13 @@ def prediction(quality):
 @app.route("/api/image")
 def easter_egg():
     orange_image_path = os.path.join(SCRIPT_DIR, "orange.jpg")
-    return image_to_bytes(orange_image_path)
+    return ImageProcessor(orange_image_path).to_rgb565()
 
 
 @app.route("/api/image/<symbol>")
 def image(symbol):
     image_path = generate_graph(symbol)
-    return image_to_bytes(image_path)
+    return ImageProcessor(image_path).to_rgb565()
 
 
 def get_prediction(quality):
@@ -84,26 +87,6 @@ def get_sorted_data_for_quality(quality):
         return binance_streamer.get_sorted_data(reverse=True)
 
 
-def image_to_bytes(image_path):
-    data = bytearray()
-    image = Image.open(image_path)
-    for y in range(135):
-        for x in range(240):
-            colour = image.getpixel((x, y))
-
-            if colour[0] < 40 and colour[1] < 40 and colour[2] < 40:
-                colour = (0, 0, 0)
-
-            r = ((colour[0] * 31) // 255) << 11
-            g = ((colour[1] * 63) // 255) << 5
-            b = ((colour[2] * 31) // 255)
-
-            flipped = socket.htons(r + g + b)
-            data.append(flipped >> 8)
-            data.append(flipped & 0x00ff)
-    return data
-
-
 def generate_graph(crypto_symbol):
     SCRIPT_DIR = os.path.dirname(__file__)
 
@@ -126,14 +109,22 @@ def generate_graph(crypto_symbol):
 
     fig.write_image(filepath, width=700, height=640)
 
-    image = Image.open(filepath)
-    image = image.crop((70-20, 90+15, 630+43-20, 30 + 338+50+10+15))
-    image.thumbnail((240, 135), Image.Resampling.LANCZOS)
+    image_p = ImageProcessor(filepath)
 
-    image_filter = ImageEnhance.Contrast(image)
-    image = image_filter.enhance(2)
+    image_p.crop(50, 105, 653, 443)
+    image_p.resize_down(240, 135)
+    image_p.set_black_point(40)
+    image_p.increase_contrast(2)
+    image_p.save_to_file(filepath)
 
-    image.save(filepath, quality=100, optimize=True)
+    # image = Image.open(filepath)
+    # image = image.crop((70-20, 90+15, 630+43-20, 30 + 338+50+10+15))
+    # image.thumbnail((240, 135), Image.Resampling.LANCZOS)
+
+    # image_filter = ImageEnhance.Contrast(image)
+    # image = image_filter.enhance(2)
+
+    # image.save(filepath, quality=100, optimize=True)
 
     return filepath
 
