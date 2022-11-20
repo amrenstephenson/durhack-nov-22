@@ -175,16 +175,17 @@ void initBallView(void) {
 
   tft.fillScreen(TFT_BLACK);
   tft.setRotation(0);
-  
+
   unsigned long width = tft.width();
   unsigned long height = tft.height();
 
   //draw triangle:
   unsigned long pad = 10;
+  unsigned long bottom_pad = 30;
   unsigned long side_len = width - 2 * pad;
   unsigned long tri_height = sqrt(side_len*side_len - (side_len/2)*(side_len/2));
-  unsigned long top_offset = height - pad - tri_height;
-  tft.fillTriangle(width / 2, height - pad, pad, top_offset, width - pad, top_offset, TFT_BLUE);
+  unsigned long top_offset = height - bottom_pad - tri_height;
+  tft.fillTriangle(width / 2, height - bottom_pad, pad, top_offset, width - pad, top_offset, TFT_BLUE);
 
   //draw trade name:
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
