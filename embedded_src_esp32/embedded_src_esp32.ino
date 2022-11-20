@@ -3,6 +3,8 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
 
+#include "banana.h"
+
 // Display libraries
 #include <SPI.h>
 #include <TFT_eSPI.h>
@@ -14,7 +16,7 @@
 // Timeouts
 #define S_TO_MICROS 1000000
 #define TIMEOUT 30 * S_TO_MICROS
-unsigned long THROW_MIN_DELAY = 0.2 * S_TO_MICROS;
+unsigned long THROW_MIN_DELAY = 0.1 * S_TO_MICROS;
 
 typedef enum {
   BALL,
@@ -64,9 +66,11 @@ void connectToWiFi(void) {
     const char* password = "DXQjTwNw";
     WiFi.begin(ssid, password);
     Serial.println("Connecting");
-    while(WiFi.status() != WL_CONNECTED) { 
+    for (unsigned int i = 0; WiFi.status() != WL_CONNECTED; i++) { 
       delay(500);
       Serial.print(".");
+      if (i > 15)
+        return;
     }
 
     Serial.println("");
@@ -79,6 +83,7 @@ String GET(String url) {
   String resp;
 
   for (;;) {
+    String errMsg = "";
     if (WiFi.status() == WL_CONNECTED) {
       WiFiClient client;
       HTTPClient http;
@@ -93,13 +98,16 @@ String GET(String url) {
         }
         http.end();
       }
+      errMsg = "Amren's crappy server is down";
+    } else {
+      errMsg = "Not connected to LinkIT";
     }
     
-    Serial.println("[HTTPS] Unable to connect");
+    Serial.println("GET failed.");
     tft.fillScreen(TFT_BLACK);
     tft.setCursor(0, 10, 2);
     tft.setTextColor(TFT_WHITE, TFT_RED);
-    tft.println("Amren's crappy server is down");
+    tft.println(errMsg);
     delay(1000);
   }
 
@@ -167,16 +175,17 @@ void initBallView(void) {
 
   tft.fillScreen(TFT_BLACK);
   tft.setRotation(0);
-  
+
   unsigned long width = tft.width();
   unsigned long height = tft.height();
 
   //draw triangle:
   unsigned long pad = 10;
+  unsigned long bottom_pad = 30;
   unsigned long side_len = width - 2 * pad;
   unsigned long tri_height = sqrt(side_len*side_len - (side_len/2)*(side_len/2));
-  unsigned long top_offset = height - pad - tri_height;
-  tft.fillTriangle(width / 2, height - pad, pad, top_offset, width - pad, top_offset, TFT_BLUE);
+  unsigned long top_offset = height - bottom_pad - tri_height;
+  tft.fillTriangle(width / 2, height - bottom_pad, pad, top_offset, width - pad, top_offset, TFT_BLUE);
 
   //draw trade name:
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
@@ -224,6 +233,20 @@ void initGraphView(void) {
   tft.printf("1%s = %.3f%s", currentTrade.from.c_str(), currentTrade.price, currentTrade.to.c_str());
 }
 
+void showSplashScreen() {
+  tft.setTextSize(2);
+  tft.fillScreen(TFT_BLACK);
+  tft.setTextColor(TFT_WHITE, TFT_BLACK);
+  tft.setRotation(0);
+  String msg = "Pick me up";
+  tft.setCursor((tft.width() - tft.textWidth(msg)) / 2, 45, 2);
+  tft.println(msg);
+
+  tft.setSwapBytes(true);
+  tft.pushImage((135 - 75) / 2, 90, 75, 100, banana_img);
+  tft.setTextSize(1);
+}
+
 void setup() {
   // put your setup code here, to run once:
   Serial.begin(115200);
@@ -236,7 +259,10 @@ void setup() {
   Serial.println("MAC Address: " + WiFi.macAddress());
 
   tft.begin();
-  tft.fillScreen(TFT_BLACK);
+  tft.setCursor(0, 0, 2);
+
+  connectToWiFi();
+  showSplashScreen();
 }
 
 void loop() {
@@ -248,7 +274,7 @@ void loop() {
   // If active and not touched in TIMEOUT millis then reset state and turn off screen
   if (!touched && active && currentTime - lastTouched > TIMEOUT) {
     active = false;
-    tft.fillScreen(TFT_BLACK);
+    showSplashScreen();
   }
 
   // If touched since last loop

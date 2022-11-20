@@ -3,10 +3,24 @@ from websockets import connect
 import json
 import threading
 from decimal import *
-from collections import OrderedDict
+from abc import ABC, abstractmethod
 
 
-class BinanceStreamer():
+class FinanceStreamer(ABC):
+    @abstractmethod
+    def count_stream_data() -> bool:
+        pass
+
+    @abstractmethod
+    def get_sorted_data() -> list:
+        pass
+
+    @abstractmethod
+    def get_sorted_data_abs() -> list:
+        pass
+
+
+class FinanceStreamerBinance(FinanceStreamer):
     STREAM_NAME = "!ticker_1d@arr"
     ENDPOINT = f"wss://stream.binance.com:9443/ws/{STREAM_NAME}"
 
@@ -16,16 +30,19 @@ class BinanceStreamer():
 
         threading.Thread(target=self.event_loop_thread).start()
 
-    def event_loop_thread(self):
-        asyncio.new_event_loop().run_until_complete(self.get_data_from_websocket())
+    def count_stream_data(self) -> bool:
+        return len(self.cached_stream_data)
 
-    def get_sorted_data(self, reverse=False):
+    def event_loop_thread(self):
+        asyncio.new_event_loop().run_until_complete(self.collect_data_from_websocket())
+
+    def get_sorted_data(self, reverse=False) -> list:
         return sorted(self.cached_stream_data.items(), key=lambda t: Decimal(t[1]["price_change_percent"]), reverse=not reverse)
 
-    def get_sorted_data_abs(self):
+    def get_sorted_data_abs(self) -> list:
         return sorted(self.cached_stream_data.items(), key=lambda t: abs(Decimal(t[1]["price_change_percent"])))
 
-    async def get_data_from_websocket(self):
+    async def collect_data_from_websocket(self):
         global running
         async with connect(self.ENDPOINT) as websocket:
             while True:
@@ -51,7 +68,3 @@ class BinanceStreamer():
                         "last_trade_id": item["L"],
                         "total_number_of_trades": item["n"],
                     }
-
-
-if __name__ == "__main__":
-    BinanceStreamer(debug=True)
