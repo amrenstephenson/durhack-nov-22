@@ -1,16 +1,16 @@
 from flask import Flask, abort, redirect, url_for, current_app
-from binance_streamer import BinanceStreamer
 import os
 from image_processor import ImageProcessorPIL as ImageProcessor
 from graph_generator import GraphGeneratorPlotly as GraphGenerator
-from finance_collector import FinanceCollectorBinance as FinanceCollector
+from finance_api import FinanceAPIBinance as FinanceAPI
 from stock_predictor import StockPredictor, QUALITIES
+from finance_streamer import FinanceStreamerBinance as FinanceStreamer
 
 app = Flask(__name__)
 
-binance_streamer = BinanceStreamer()
-finance_collector = FinanceCollector()
-stock_predictor = StockPredictor(binance_streamer, finance_collector)
+finance_streamer = FinanceStreamer()
+finance_api = FinanceAPI()
+stock_predictor = StockPredictor(finance_streamer, finance_api)
 
 SCRIPT_DIR = os.path.dirname(__file__)
 
@@ -33,7 +33,12 @@ def api():
 def prediction(quality):
     if quality not in QUALITIES:
         return abort(400, "Prediction quality must be 'good', 'meh' or 'bad'.")
-    return stock_predictor.new_prediction(quality)
+
+    prediction = stock_predictor.new_prediction(quality)
+    if prediction == None:
+        abort(503, "A prediction is temporarily unavailable, please try again later.")
+
+    return prediction
 
 
 @app.route("/api/image")
@@ -51,7 +56,7 @@ def image(symbol):
 def generate_graph_for_symbol_pair(symbol_pair: str):
     filepath = os.path.join(SCRIPT_DIR, "candlestick_graph.png")
 
-    candlestick_data = finance_collector.collect_candlestick_data(symbol_pair)
+    candlestick_data = finance_api.collect_candlestick_data(symbol_pair)
 
     graph_g = GraphGenerator(candlestick_data)
     graph_g.generate_candlestick_graph()

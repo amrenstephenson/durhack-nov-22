@@ -3,7 +3,7 @@ import requests
 from typing import Tuple
 
 
-class FinanceCollector(ABC):
+class FinanceAPI(ABC):
     def __init__(self) -> None:
         super().__init__()
 
@@ -16,7 +16,7 @@ class FinanceCollector(ABC):
         pass
 
 
-class FinanceCollectorBinance(FinanceCollector):
+class FinanceAPIBinance(FinanceAPI):
     def split_symbol_pair(self, symbol_pair: str):
         resp = requests.get("https://api.binance.com/api/v3/exchangeInfo", params={"symbol": symbol_pair})
         symbols = resp.json()["symbols"][0]
