@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>API Reference</title>
+    <style>
+        body {
+            font-family: monospace;
+        }
+
+        table,
+        th,
+        td {
+            border: 1px solid black;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            text-align: left;
+            padding: 0.5rem;
+            padding-right: 1rem;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>API Reference</h1>
+    <table>
+        <tr>
+            <th>API Path</th>
+            <th>Response Type</th>
+            <th>Description</th>
+        </tr>
+        <tr>
+            <td><a href="/api/prediction/good">/api/prediction/&lt;quality&gt;</a></td>
+            <td>CSV</td>
+            <td>A magical prediction of a given quality ('good', 'meh', 'bad'). The returned tuple is of the form
+                (base_symbol, quote_symbol, latest_price, daily_percentage_change).</td>
+        </tr>
+        <tr>
+            <td><a href="/api/image">/api/image/&lt;symbol-pair&gt;</a></td>
+            <td>RGB565</td>
+            <td>An image of the 24 hour candlestick graph for a given symbol pair.</td>
+        </tr>
+    </table>
+</body>
+
+</html>

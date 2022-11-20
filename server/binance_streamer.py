@@ -2,6 +2,8 @@ import asyncio
 from websockets import connect
 import json
 import threading
+from decimal import *
+from collections import OrderedDict
 
 
 class BinanceStreamer():
@@ -16,6 +18,12 @@ class BinanceStreamer():
 
     def event_loop_thread(self):
         asyncio.new_event_loop().run_until_complete(self.get_data_from_websocket())
+
+    def get_sorted_data(self, reverse=False):
+        return sorted(self.cached_stream_data.items(), key=lambda t: Decimal(t[1]["price_change_percent"]), reverse=not reverse)
+
+    def get_sorted_data_abs(self):
+        return sorted(self.cached_stream_data.items(), key=lambda t: abs(Decimal(t[1]["price_change_percent"])))
 
     async def get_data_from_websocket(self):
         global running
