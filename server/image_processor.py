@@ -108,6 +108,3 @@ class ImageProcessorPIL(ImageProcessor):
 
     def save_to_file(self, filepath):
         self.pil_image.save(filepath, quality=100, optimize=True)
-
-
-ImageProcessorPIL("orange.jpg")
