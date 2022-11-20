@@ -1,24 +1,22 @@
-from flask import Flask, abort, redirect, url_for, render_template, current_app
+from flask import Flask, abort, redirect, url_for, current_app
 from binance_streamer import BinanceStreamer
-import random
-from enum import Enum
-from functools import lru_cache
-import requests
 import os
-from PIL import Image, ImageEnhance
-import socket
 from image_processor import ImageProcessorPIL as ImageProcessor
 from graph_generator import GraphGeneratorPlotly as GraphGenerator
+from finance_collector import FinanceCollectorBinance as FinanceCollector
+from stock_predictor import StockPredictor, QUALITIES
 
 app = Flask(__name__)
+
 binance_streamer = BinanceStreamer()
+finance_collector = FinanceCollector()
+stock_predictor = StockPredictor(binance_streamer, finance_collector)
 
 SCRIPT_DIR = os.path.dirname(__file__)
 
-QUALITY_GOOD = "good"
-QUALITY_MEH = "meh"
-QUALITY_BAD = "bad"
-QUALITIES = [QUALITY_GOOD, QUALITY_MEH, QUALITY_BAD]
+
+def start_server():
+    app.run(host="0.0.0.0", port=8080)
 
 
 @app.route("/")
@@ -35,7 +33,7 @@ def api():
 def prediction(quality):
     if quality not in QUALITIES:
         return abort(400, "Prediction quality must be 'good', 'meh' or 'bad'.")
-    return get_prediction(quality)
+    return stock_predictor.new_prediction(quality)
 
 
 @app.route("/api/image")
@@ -46,49 +44,14 @@ def easter_egg():
 
 @app.route("/api/image/<symbol>")
 def image(symbol):
-    image_path = generate_graph_for_symbol(symbol)
+    image_path = generate_graph_for_symbol_pair(symbol)
     return ImageProcessor(image_path).to_rgb565()
 
 
-def get_prediction(quality):
-    data_count = len(binance_streamer.cached_stream_data)
-    if data_count == 0:
-        return abort(503, "Prediction temporarily unavailable, please try again.")
+def generate_graph_for_symbol_pair(symbol_pair: str):
+    filepath = os.path.join(SCRIPT_DIR, "candlestick_graph.png")
 
-    sorted_data = get_sorted_data_for_quality(quality)
-    index = clamp(random.randrange(0, 5), 0, data_count)
-    prediction = sorted_data[index]
-
-    prediction_symbol = prediction[0]
-    prediction_data = prediction[1]
-    return ",".join([split_symbol(prediction_symbol), prediction_data["last_price"], prediction_data["price_change_percent"]])
-
-
-@lru_cache(maxsize=None)
-def split_symbol(symbol):
-    resp = requests.get("https://api.binance.com/api/v3/exchangeInfo", params={"symbol": symbol})
-    if resp and resp.json() and len(resp.json()) and "symbols" in resp.json() and len(resp.json()["symbols"]):
-        symbols = resp.json()["symbols"][0]
-    else:
-        symbols = {"baseAsset": "ETH", "quoteAsset": "BTC"}
-    return symbols["baseAsset"] + "," + symbols["quoteAsset"]
-
-
-def get_sorted_data_for_quality(quality):
-    if quality == QUALITY_GOOD:
-        return binance_streamer.get_sorted_data()
-    elif quality == QUALITY_MEH:
-        return binance_streamer.get_sorted_data_abs()
-    elif quality == QUALITY_BAD:
-        return binance_streamer.get_sorted_data(reverse=True)
-
-
-def generate_graph_for_symbol(crypto_symbol):
-    SCRIPT_DIR = os.path.dirname(__file__)
-    filepath = os.path.join(SCRIPT_DIR, "candlestick.png")
-
-    response = requests.get(f"https://www.binance.com/api/v3/klines?symbol={crypto_symbol}&interval=1h&limit=24")
-    candlestick_data = response.json()
+    candlestick_data = finance_collector.collect_candlestick_data(symbol_pair)
 
     graph_g = GraphGenerator(candlestick_data)
     graph_g.generate_candlestick_graph()
@@ -104,9 +67,5 @@ def generate_graph_for_symbol(crypto_symbol):
     return filepath
 
 
-def clamp(num, min_value, max_value):
-    return max(min(num, max_value), min_value)
-
-
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=8080)
+    start_server()
