@@ -4,6 +4,7 @@
 #include <HTTPClient.h>
 
 #include "banana.h"
+#include "ETHUSDT.h"
 
 // Display libraries
 #include <SPI.h>
@@ -61,57 +62,11 @@ void refreshBtnDown() {
 }
 
 void connectToWiFi(void) {
-  if (WiFi.status() != WL_CONNECTED) {
-    const char* ssid = "LinkIT";
-    const char* password = "DXQjTwNw";
-    WiFi.begin(ssid, password);
-    Serial.println("Connecting");
-    for (unsigned int i = 0; WiFi.status() != WL_CONNECTED; i++) { 
-      delay(500);
-      Serial.print(".");
-      if (i > 15)
-        return;
-    }
-
-    Serial.println("");
-    Serial.printf("Connected to %s\n", ssid);
-    Serial.println("IP address: " + WiFi.localIP().toString());
+  static bool connected = false;
+  if (!connected) {
+    Serial.println("[*] DEMO MODE");
+    connected = true;
   }
-}
-
-String GET(String url) {
-  String resp;
-
-  for (;;) {
-    String errMsg = "";
-    if (WiFi.status() == WL_CONNECTED) {
-      WiFiClient client;
-      HTTPClient http;
-      Serial.println("Requesting " + url);
-      if (http.begin(client, url)) {
-        int httpCode = http.GET();
-        Serial.println("============== Response code: " + String(httpCode));
-        if (httpCode == 200) {
-          resp = http.getString();
-          http.end();
-          break;
-        }
-        http.end();
-      }
-      errMsg = "Amren's crappy server is down";
-    } else {
-      errMsg = "Not connected to LinkIT";
-    }
-    
-    Serial.println("GET failed.");
-    tft.fillScreen(TFT_BLACK);
-    tft.setCursor(0, 10, 2);
-    tft.setTextColor(TFT_WHITE, TFT_RED);
-    tft.println(errMsg);
-    delay(1000);
-  }
-
-  return resp;
 }
 
 void printCentered(String str) {
@@ -136,16 +91,19 @@ void printCentered(String str) {
   free(s);
 }
 
+String getDemoTradeCSV(enum TradeRanking ranking) {
+  return String("USD,MATIC,1.4925,-2.14");
+}
+
+const unsigned short* getDemoCandlestickImage(String from, String to) {
+  return ETHUSDT_img;
+}
+
 void initBallView(void) {
   enum TradeRanking tradeRanking = (enum TradeRanking)random(GOOD, N_RANKINGS);
-  static const String endpoints[N_RANKINGS] = {
-    [GOOD] = "http://10.249.11.28:8080/api/prediction/good",
-    [MEH] = "http://10.249.11.28:8080/api/prediction/meh",
-    [BAD] = "http://10.249.11.28:8080/api/prediction/bad"
-  };
 
   //parse CSV:
-  String tradeCSV = GET(endpoints[tradeRanking]);
+  String tradeCSV = getDemoTradeCSV(tradeRanking);
   const char* delims = ",";
   char* s = strdup(tradeCSV.c_str());
   const char* part = strtok(s, delims);
@@ -212,10 +170,9 @@ void initGraphView(void) {
   tft.fillScreen(TFT_BLACK);
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
   tft.println("Loading graph...");
-  String dataStr = GET("http://10.249.11.28:8080/api/image/" + currentTrade.from + currentTrade.to);
+  const unsigned short* dataBytes = getDemoCandlestickImage(currentTrade.from, currentTrade.to);
   tft.fillScreen(TFT_BLACK);
 
-  const unsigned short* dataBytes = (const unsigned short*)dataStr.c_str();
   tft.setSwapBytes(true);
   tft.pushImage(0, 0, 240, 135, dataBytes);
 
@@ -255,8 +212,6 @@ void setup() {
   touchAttachInterrupt(ORANGE_PIN, orangeTouched, ORANGE_THRESHOLD);
   attachInterrupt(35, refreshBtnDown, FALLING);
   attachInterrupt(0, refreshBtnDown, FALLING);
-
-  Serial.println("MAC Address: " + WiFi.macAddress());
 
   tft.begin();
   tft.setCursor(0, 0, 2);
